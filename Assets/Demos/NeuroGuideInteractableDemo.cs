@@ -8,7 +8,6 @@ using DG.Tweening;
 using gambit.neuroguide;
 #endif
 
-using gambit.neuroguide;
 using UnityEngine;
 
 #endregion

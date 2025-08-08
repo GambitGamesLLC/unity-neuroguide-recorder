@@ -1,11 +1,20 @@
+#region IMPORTS
+
 using UnityEngine;
 using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 
+#if GAMBIT_NEUROGUIDE
 using gambit.neuroguide;
+#endif
+
+#if GAMBIT_NEUROGUIDE_RECORDER
 using gambit.neuroguide.recorder;
+#endif
+
+#endregion
 
 /// <summary>
 /// A test script to control and validate the NeuroGuideRecorderManager functionality.
@@ -28,7 +37,7 @@ public class NeuroGuideRecorderTest: MonoBehaviour
 
     #endregion
 
-    #region UNITY - LIFECYCLE
+    #region PUBLIC - START
 
     /// <summary>
     /// Initializes the NeuroGuide and Recorder managers in sequence.
@@ -38,7 +47,7 @@ public class NeuroGuideRecorderTest: MonoBehaviour
     //--------------------------------//
     {
         // --- Step 1: Create NeuroGuideManager with debug input enabled ---
-        var ngOptions = new NeuroGuideManager.Options
+        NeuroGuideManager.Options options = new NeuroGuideManager.Options
         {
             enableDebugData = true, // Enables keyboard input (Up/Down arrows)
             showDebugLogs = true
@@ -47,8 +56,8 @@ public class NeuroGuideRecorderTest: MonoBehaviour
         if(NeuroGuideManager.Instance == null)
         {
             NeuroGuideManager.Create(
-                options: ngOptions,
-                OnSuccess: ( ngSystem ) =>
+                options: options,
+                OnSuccess: ( system ) =>
                 {
                     _statusMessage = "NeuroGuideManager Ready. Initializing Recorder...";
                     Debug.Log( "TEST: NeuroGuideManager created successfully." );
@@ -68,11 +77,15 @@ public class NeuroGuideRecorderTest: MonoBehaviour
             _statusMessage = "NeuroGuideManager Ready. Initializing Recorder...";
             Debug.Log( "TEST: NeuroGuideManager created successfully." );
 
-            // --- Step 2: Once NG Manager is ready, create the Recorder Manager ---
+            // --- Step 2: Once NeuroGuide Manager is ready, create the Recorder Manager ---
             InitializeRecorderManager();
         }
 
     }
+
+    #endregion
+
+    #region PUBLIC - ONGUI
 
     /// <summary>
     /// Draws the debug UI.
@@ -84,6 +97,10 @@ public class NeuroGuideRecorderTest: MonoBehaviour
         // Draw a container for all our controls
         GUILayout.Window( 0, new Rect( 10, 10, 400, Screen.height - 20 ), DrawControls, "NeuroGuide Recorder Test" );
     }
+
+    #endregion
+
+    #region PUBLIC - ON DESTROY
 
     /// <summary>
     /// Ensures managers are properly destroyed when exiting play mode.
@@ -105,7 +122,7 @@ public class NeuroGuideRecorderTest: MonoBehaviour
 
     #endregion
 
-    #region INITIALIZATION
+    #region PRIVATE - INITIALIZE RECORDER MANAGER
 
     /// <summary>
     /// Creates the NeuroGuideRecorderManager and subscribes to its events.
@@ -114,20 +131,20 @@ public class NeuroGuideRecorderTest: MonoBehaviour
     private void InitializeRecorderManager()
     //--------------------------------//
     {
-        var recorderOptions = new NeuroGuideRecorderManager.Options
+        var options = new NeuroGuideRecorderManager.Options
         {
             showDebugLogs = true
         };
 
         NeuroGuideRecorderManager.Create(
-            options: recorderOptions,
-            OnSuccess: ( recSystem ) =>
+            options: options,
+            OnSuccess: ( system ) =>
             {
                 _statusMessage = "Systems Ready. Waiting for command.";
                 Debug.Log( "TEST: NeuroGuideRecorderManager created successfully." );
 
                 // Subscribe to state changes to update the UI
-                recSystem.OnStateUpdate += OnRecorderStateChanged;
+                system.OnStateUpdate += OnRecorderStateChanged;
                 RefreshRecordingsList();
             },
             OnFailed: ( error ) =>
@@ -261,12 +278,14 @@ public class NeuroGuideRecorderTest: MonoBehaviour
 
     #endregion
 
-    #region EVENT - HANDLERS
+    #region PRIVATE - ON RECORDER STATE CHANGED
 
     /// <summary>
     /// Updates the status message when the recorder's state changes.
     /// </summary>
+    //---------------------------------------------------------------------------------//
     private void OnRecorderStateChanged( NeuroGuideRecorderManager.State newState )
+    //----------------------------------------------------------------------------------//
     {
         _statusMessage = $"State changed to {newState}.";
         if(newState == NeuroGuideRecorderManager.State.Recording)
@@ -274,19 +293,39 @@ public class NeuroGuideRecorderTest: MonoBehaviour
             // When a new recording starts, create a new default filename for the next one
             _recordingName = $"Session_{DateTime.Now:yyyy-MM-dd_HH-mm-ss}.dat";
         }
-    }
+
+    } //END OnRecorderStateChanged Method
+
+    #endregion
+
+    #region PRIVATE - REFERSH RECORDINGS LIST
 
     /// <summary>
     /// Scans the recordings directory and updates the list of available files.
     /// </summary>
+    //-----------------------------------------//
     private void RefreshRecordingsList()
+    //-----------------------------------------//
     {
-        var directory = NeuroGuideRecorderManager.RecordingsDirectory;
+        if(NeuroGuideRecorderManager.system == null)
+        {
+            return;
+        }
+
+        if(NeuroGuideRecorderManager.system.options == null)
+        {
+            return;
+        }
+
+        var directory = NeuroGuideRecorderManager.system.options.RecordingsDirectory;
+
         if(Directory.Exists( directory ))
         {
             _availableRecordings = Directory.GetFiles( directory, "*.dat" ).ToList();
         }
-    }
+
+    } //END RefershRecordingsList Method
 
     #endregion
-}
+
+} //END NeuroGuideRecorderTest Class

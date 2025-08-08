@@ -33,7 +33,7 @@
       "depth": 0,
       "source": "git",
       "dependencies": {},
-      "hash": "2301f2ab846e5a96922247c3026f0830dfe19dee"
+      "hash": "865f29ca6cf896fffcb4ee94404f356500359dad"
     },
     "com.leguar.totaljson": {
       "version": "https://github.com/GambitGamesLLC/unity-plugin-totaljson.git?path=Assets/Plugins/Package",
