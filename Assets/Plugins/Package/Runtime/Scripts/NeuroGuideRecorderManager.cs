@@ -246,13 +246,6 @@ namespace gambit.neuroguide.recorder
             system.state = State.Idle;
             SendStateUpdatedMessage();
 
-            //If we were unable to make a connection to the NeuroGuide hardware, we cannot continue
-            if(system.state == State.Idle)
-            {
-                OnFailed?.Invoke( "NeuroGuideManager.cs Create() Unable to connect to NeuroGuide hardware. Unable to continue." );
-                return;
-            }
-
             //Access a variable of the singleton instance, this will ensure it is initialized in the hierarchy with a GameObject representation
             //Doing this makes sure that Unity Lifecycle methods like Update() will run
             Instance.enabled = true;

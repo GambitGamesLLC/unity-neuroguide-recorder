@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.demigiant.dotween": "https://github.com/GambitGamesLLC/unity-plugin-dotween.git?path=Assets/Plugins/Package",
     "com.gambit.mathhelper": "https://github.com/GambitGamesLLC/unity-math-helper.git?path=Assets/Plugins/Package",
     "com.gambit.neuroguide": "https://github.com/GambitGamesLLC/unity-neuroguide-manager.git?path=Assets/Plugins/Package",
     "com.gambit.singleton": "https://github.com/GambitGamesLLC/unity-singleton.git?path=Assets/Plugins/Package",
