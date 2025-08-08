@@ -1,0 +1,46 @@
+{
+    "name": "gambit.neuroguide.recorder",
+    "rootNamespace": "",
+    "references": [
+        "Unity.InputSystem",
+        "gambit.singleton",
+        "gambit.mathhelper",
+        "gambit.neuroguide",
+        "Leguar.TotalJSON"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [
+        {
+            "name": "com.gambit.singleton",
+            "expression": "",
+            "define": "GAMBIT_SINGLETON"
+        },
+        {
+            "name": "com.unity.inputsystem",
+            "expression": "",
+            "define": "UNITY_INPUT"
+        },
+        {
+            "name": "com.gambit.mathhelper",
+            "expression": "",
+            "define": "GAMBIT_MATHHELPER"
+        },
+        {
+            "name": "com.gambit.neuroguide",
+            "expression": "",
+            "define": "GAMBIT_NEUROGUIDE"
+        },
+        {
+            "name": "com.leguar.totaljson",
+            "expression": "",
+            "define": "EXT_TOTALJSON"
+        }
+    ],
+    "noEngineReferences": false
+}

@@ -1,0 +1,18 @@
+{
+  "name": "com.gambit.neuroguide.recorder",
+  "version": "1.0.0",
+  "displayName": "NeuroGuide Recorder",
+  "description": "Used to record and playback data from the NeuroGuide hardware.",
+  "unity": "6000.1",
+  "documentationUrl": "https://github.com/GambitGamesLLC/unity-neuroguide-recorder",
+  "changelogUrl": "https://github.com/GambitGamesLLC/unity-neuroguide-recorder",
+  "licensesUrl": "https://github.com/GambitGamesLLC/unity-neuroguide-recorder",
+  "keywords": [
+    "neuroguide"
+  ],
+  "author": {
+    "name": "Gambit Games LLC",
+    "email": "gambitgamesllc@gmail.com",
+    "url": "https://github.com/GambitGamesLLC"
+  }
+}
