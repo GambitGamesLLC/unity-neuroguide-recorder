@@ -4,6 +4,7 @@
     "com.gambit.mathhelper": "https://github.com/GambitGamesLLC/unity-math-helper.git?path=Assets/Plugins/Package",
     "com.gambit.neuroguide": "https://github.com/GambitGamesLLC/unity-neuroguide-manager.git?path=Assets/Plugins/Package",
     "com.gambit.singleton": "https://github.com/GambitGamesLLC/unity-singleton.git?path=Assets/Plugins/Package",
+    "com.gambit.staticcoroutine": "https://github.com/GambitGamesLLC/unity-static-Coroutine.git?path=Assets/Plugins/Package",
     "com.leguar.totaljson": "https://github.com/GambitGamesLLC/unity-plugin-totaljson.git?path=Assets/Plugins/Package",
     "com.unity.ai.navigation": "2.0.7",
     "com.unity.collab-proxy": "2.8.2",

@@ -14,6 +14,10 @@ using gambit.neuroguide;
 using gambit.singleton;
 #endif
 
+#if GAMBIT_STATIC_COROUTINE
+using gambit.staticcoroutine;
+#endif
+
 #endregion
 
 namespace gambit.neuroguide.recorder
@@ -31,56 +35,9 @@ namespace gambit.neuroguide.recorder
         /// </summary>
         public static NeuroGuideRecorderSystem system;
 
-        /// <summary>
-        /// The base directory where all recording files are stored.
-        /// </summary>
-        public static string RecordingsDirectory => Path.Combine( Application.persistentDataPath, "NeuroGuideRecordings" );
-
         #endregion
 
         #region PRIVATE - VARIABLES
-
-        /// <summary>
-        /// Handles writing data in a binary format, which is highly efficient for storage.
-        /// This is initialized when a new recording starts and writes data to the _fileStream.
-        /// </summary>
-        private BinaryWriter _writer;
-
-        /// <summary>
-        /// Represents the direct connection to the recording file on the disk.
-        /// It's opened when recording begins and closed when it's finished, ensuring data is saved correctly.
-        /// </summary>
-        private FileStream _fileStream;
-
-        /// <summary>
-        /// Stores the full, absolute file path for the session that is currently being recorded or played back.
-        /// This is crucial for managing the active file, especially for operations like Stop() or Delete().
-        /// </summary>
-        private string _activeRecordingPath;
-
-        /// <summary>
-        /// Acts as a simple counter during a recording session. It tracks the number of data points
-        /// saved and assigns a unique ID to each RecordedDataPoint.
-        /// </summary>
-        private int _recordedDataCount;
-
-        /// <summary>
-        /// A list that holds the entire recorded session in memory after it's loaded from a file.
-        /// Loading the data into this list allows for fast, responsive playback and seeking without constant disk access.
-        /// </summary>
-        private List<RecordedDataPoint> _loadedRecording;
-
-        /// <summary>
-        /// A reference to the active playback coroutine. Storing this reference is essential
-        /// to be able to stop or interrupt the playback process for actions like Pause(), Seek(), or Stop().
-        /// </summary>
-        private Coroutine _playbackCoroutine;
-
-        /// <summary>
-        /// Acts as a "cursor" or pointer to the current position within the _loadedRecording list during playback.
-        /// It determines which data point is next to be sent to the NeuroGuideManager.
-        /// </summary>
-        private int _playbackIndex = 0;
 
         #endregion
 
@@ -113,6 +70,11 @@ namespace gambit.neuroguide.recorder
             /// Should debug logs be printed to the console log?
             /// </summary>
             public bool showDebugLogs = true;
+
+            /// <summary>
+            /// The base directory where all recording files are stored.
+            /// </summary>
+            public string RecordingsDirectory => Path.Combine( Application.persistentDataPath, "NeuroGuideRecordings" );
 
         } //END Options
 
@@ -194,6 +156,49 @@ namespace gambit.neuroguide.recorder
             /// </summary>
             public Action<State> OnStateUpdate;
 
+
+            /// <summary>
+            /// Handles writing data in a binary format, which is highly efficient for storage.
+            /// This is initialized when a new recording starts and writes data to the _fileStream.
+            /// </summary>
+            public BinaryWriter _writer;
+
+            /// <summary>
+            /// Represents the direct connection to the recording file on the disk.
+            /// It's opened when recording begins and closed when it's finished, ensuring data is saved correctly.
+            /// </summary>
+            public FileStream _fileStream;
+
+            /// <summary>
+            /// Stores the full, absolute file path for the session that is currently being recorded or played back.
+            /// This is crucial for managing the active file, especially for operations like Stop() or Delete().
+            /// </summary>
+            public string _activeRecordingPath;
+
+            /// <summary>
+            /// Acts as a simple counter during a recording session. It tracks the number of data points
+            /// saved and assigns a unique ID to each RecordedDataPoint.
+            /// </summary>
+            public int _recordedDataCount;
+
+            /// <summary>
+            /// A list that holds the entire recorded session in memory after it's loaded from a file.
+            /// Loading the data into this list allows for fast, responsive playback and seeking without constant disk access.
+            /// </summary>
+            public List<RecordedDataPoint> _loadedRecording;
+
+            /// <summary>
+            /// A reference to the active playback coroutine. Storing this reference is essential
+            /// to be able to stop or interrupt the playback process for actions like Pause(), Seek(), or Stop().
+            /// </summary>
+            public Coroutine _playbackCoroutine;
+
+            /// <summary>
+            /// Acts as a "cursor" or pointer to the current position within the _loadedRecording list during playback.
+            /// It determines which data point is next to be sent to the NeuroGuideManager.
+            /// </summary>
+            public int _playbackIndex = 0;
+
         } //END NeuroGuideRecorderSystem Class
 
         #endregion
@@ -221,11 +226,16 @@ namespace gambit.neuroguide.recorder
             }
 
 #if GAMBIT_NEUROGUIDE
-            if(NeuroGuideManager.system == null)
+            if(NeuroGuideManager.Instance == null)
             {
                 OnFailed?.Invoke( "NeuroGuideRecorderManager.cs Create() NeuroGuideManager has not been initialized. Unable to continue." );
                 return;
             }
+#endif
+
+#if !GAMBIT_STATIC_COROUTINE
+            OnFailed?.Invoke( "NeuroGuideRecorderManager.cs Create() Missing GAMBIT_STATIC_COROUTINE scripting define symbol and/or package. Unable to continue." );
+            return;
 #endif
 
             //If the user didn't pass in any options, use the defaults
@@ -237,9 +247,9 @@ namespace gambit.neuroguide.recorder
             system.options = options;
 
             // Ensure the directory for recordings exists.
-            if(!Directory.Exists( RecordingsDirectory ))
+            if(!Directory.Exists( system.options.RecordingsDirectory ))
             {
-                Directory.CreateDirectory( RecordingsDirectory );
+                Directory.CreateDirectory( system.options.RecordingsDirectory );
             }
 
             //Mark the system as idle, so Update methods know we're ready
@@ -272,25 +282,9 @@ namespace gambit.neuroguide.recorder
                 return;
             }
 
-            Instance.Invoke( "FinishDestroy", .1f );
-
-        } //END Destroy Method
-
-        /// <summary>
-        /// Invoked by Destroy(), after allowing for tweens to be cleaned up, destroys the gameobjects
-        /// </summary>
-        //------------------------------------//
-        private void FinishDestroy()
-        //------------------------------------//
-        {
-            if(system.options.showDebugLogs)
-            {
-                Debug.Log( "NeuroGuideRecorderManager.cs FinishDestroy() cleaned up objects and data, ready to Create()" );
-            }
-
             system = null;
 
-        } //END FinishDestroy
+        } //END Destroy Method
 
         #endregion
         
@@ -312,7 +306,7 @@ namespace gambit.neuroguide.recorder
                     Debug.LogWarning( "Cannot start recording. Recorder is currently busy." );
                 return;
             }
-            Instance.RecordInternal( recordingName );
+            RecordInternal( recordingName );
         }
 
         #endregion
@@ -335,7 +329,7 @@ namespace gambit.neuroguide.recorder
                     Debug.LogWarning( "Cannot start playback. Recorder is currently busy." );
                 return;
             }
-            Instance.PlayInternal( recordingName );
+            PlayInternal( recordingName );
         }
 
         #endregion
@@ -351,7 +345,7 @@ namespace gambit.neuroguide.recorder
         {
             if(system == null || system.state != State.Playing)
                 return;
-            Instance.UpdateState( State.Paused );
+            UpdateState( State.Paused );
         }
 
         #endregion
@@ -367,7 +361,7 @@ namespace gambit.neuroguide.recorder
         {
             if(system == null || system.state != State.Paused)
                 return;
-            Instance.UpdateState( State.Playing );
+            UpdateState( State.Playing );
         }
 
         #endregion
@@ -383,7 +377,8 @@ namespace gambit.neuroguide.recorder
         {
             if(system == null || system.state == State.Idle)
                 return;
-            NeuroGuideRecorderManager.Stop();
+
+            StopInternal();
         }
 
         #endregion
@@ -400,7 +395,7 @@ namespace gambit.neuroguide.recorder
         {
             if(system == null || (system.state != State.Playing && system.state != State.Paused))
                 return;
-            Instance.SeekInternal( normalizedTime );
+            SeekInternal( normalizedTime );
         }
 
         /// <summary>
@@ -413,7 +408,7 @@ namespace gambit.neuroguide.recorder
         {
             if(system == null || (system.state != State.Playing && system.state != State.Paused))
                 return;
-            Instance.SeekInternal( time );
+            SeekInternal( time );
         }
 
         /// <summary>
@@ -426,7 +421,7 @@ namespace gambit.neuroguide.recorder
         {
             if(system == null || (system.state != State.Playing && system.state != State.Paused))
                 return;
-            Instance.SeekInternal( dataIndex );
+            SeekInternal( dataIndex );
         }
 
         #endregion
@@ -467,15 +462,27 @@ namespace gambit.neuroguide.recorder
         #region PRIVATE - RECORD INTERNAL
 
         //---------------------------------------//
-        private void RecordInternal( string recordingName )
+        private static void RecordInternal( string recordingName )
         //---------------------------------------//
         {
+            if(system == null)
+            {
+                Debug.LogError( "NeuroGuideRecorderManager.cs RecordInternal() system is null. Unable to continue." );
+                return;
+            }
+
+            if(system.options == null)
+            {
+                Debug.LogError( "NeuroGuideRecorderManager.cs RecordInternal() system.options is null. Unable to continue." );
+                return;
+            }
+
             try
             {
-                _activeRecordingPath = Path.Combine( RecordingsDirectory, recordingName );
-                _fileStream = new FileStream( _activeRecordingPath, FileMode.Create, FileAccess.Write );
-                _writer = new BinaryWriter( _fileStream );
-                _recordedDataCount = 0;
+                system._activeRecordingPath = Path.Combine( system.options.RecordingsDirectory, recordingName );
+                system._fileStream = new FileStream( system._activeRecordingPath, FileMode.Create, FileAccess.Write );
+                system._writer = new BinaryWriter( system._fileStream );
+                system._recordedDataCount = 0;
 
 #if GAMBIT_NEUROGUIDE
                 // Subscribe to the data feed from the main manager
@@ -484,7 +491,7 @@ namespace gambit.neuroguide.recorder
 
                 UpdateState( State.Recording );
                 if(system.options.showDebugLogs)
-                    Debug.Log( $"Recording started: {_activeRecordingPath}" );
+                    Debug.Log( $"Recording started: {system._activeRecordingPath}" );
             }
             catch(Exception e)
             {
@@ -499,10 +506,10 @@ namespace gambit.neuroguide.recorder
         #region PRIVATE - PLAY INTERNAL
 
         //------------------------------------//
-        private void PlayInternal( string recordingName )
+        private static void PlayInternal( string recordingName )
         //------------------------------------//
         {
-            string path = Path.Combine( RecordingsDirectory, recordingName );
+            string path = Path.Combine( system.options.RecordingsDirectory, recordingName );
             if(!File.Exists( path ))
             {
                 Debug.LogError( $"Playback failed. File not found: {path}" );
@@ -513,18 +520,22 @@ namespace gambit.neuroguide.recorder
                 return;
 
             UpdateState( State.Playing );
-            _playbackIndex = 0;
-            _playbackCoroutine = StartCoroutine( PlaybackCoroutine() );
+            system._playbackIndex = 0;
+
+#if GAMBIT_STATIC_COROUTINE
+            system._playbackCoroutine = StaticCoroutine.Start( PlaybackCoroutine() );
+#endif
         }
 
-        #endregion
+#endregion
 
         #region PRIVATE - STOP INTERNAL
 
-        //------------------------------//
-        private void StopInternal()
-        //------------------------------//
+        //----------------------------------------//
+        private static void StopInternal()
+        //----------------------------------------//
         {
+
             if(system.state == State.Recording)
             {
                 StopRecordingInternal();
@@ -533,14 +544,15 @@ namespace gambit.neuroguide.recorder
             {
                 StopPlaybackInternal();
             }
-        }
+
+        } //END StopInternal Method
 
         #endregion
 
         #region PRIVATE - SEEK INTERNAL
 
         //---------------------------------------//
-        private void SeekInternal( float normalizedTime )
+        private static void SeekInternal( float normalizedTime )
         //---------------------------------------//
         {
             if(system.TotalDuration.Ticks == 0)
@@ -550,20 +562,20 @@ namespace gambit.neuroguide.recorder
         }
 
         //---------------------------------------//
-        private void SeekInternal( TimeSpan time )
+        private static void SeekInternal( TimeSpan time )
         //---------------------------------------//
         {
-            if(_loadedRecording == null || _loadedRecording.Count == 0)
+            if(system._loadedRecording == null || system._loadedRecording.Count == 0)
                 return;
 
-            long recordingStartTicks = _loadedRecording[ 0 ].timestampTicks;
+            long recordingStartTicks = system._loadedRecording[ 0 ].timestampTicks;
             long targetAbsoluteTicks = recordingStartTicks + time.Ticks;
 
             int closestIndex = 0;
             long smallestDiff = long.MaxValue;
-            for(int i = 0; i < _loadedRecording.Count; i++)
+            for(int i = 0; i < system._loadedRecording.Count; i++)
             {
-                long diff = Math.Abs( _loadedRecording[ i ].timestampTicks - targetAbsoluteTicks );
+                long diff = Math.Abs( system._loadedRecording[ i ].timestampTicks - targetAbsoluteTicks );
                 if(diff < smallestDiff)
                 {
                     smallestDiff = diff;
@@ -574,19 +586,19 @@ namespace gambit.neuroguide.recorder
         }
 
         //---------------------------------------//
-        private void SeekInternal( int dataIndex )
+        private static void SeekInternal( int dataIndex )
         //---------------------------------------//
         {
-            if(_loadedRecording == null || _loadedRecording.Count == 0)
+            if(system._loadedRecording == null || system._loadedRecording.Count == 0)
                 return;
-            _playbackIndex = Mathf.Clamp( dataIndex, 0, _loadedRecording.Count - 1 );
+            system._playbackIndex = Mathf.Clamp( dataIndex, 0, system._loadedRecording.Count - 1 );
 
-            if(_playbackCoroutine != null)
-                StopCoroutine( _playbackCoroutine );
+            if(system._playbackCoroutine != null)
+                StaticCoroutine.Stop( system._playbackCoroutine );
 
             if(system.state == State.Playing)
             {
-                _playbackCoroutine = StartCoroutine( PlaybackCoroutine() );
+                system._playbackCoroutine = StaticCoroutine.Start( PlaybackCoroutine() );
             }
             else
             {
@@ -602,9 +614,9 @@ namespace gambit.neuroguide.recorder
         private void DeleteInternal( string recordingName )
         //---------------------------------------//
         {
-            string path = Path.Combine( RecordingsDirectory, recordingName );
+            string path = Path.Combine( system.options.RecordingsDirectory, recordingName );
 
-            if(system.state != State.Idle && _activeRecordingPath == path)
+            if(system.state != State.Idle && system._activeRecordingPath == path)
             {
                 StopInternal();
             }
@@ -636,46 +648,51 @@ namespace gambit.neuroguide.recorder
         /// Coroutine that handles the real-time playback of recorded data.
         /// </summary>
         //---------------------------------------//
-        private IEnumerator PlaybackCoroutine()
+        private static IEnumerator PlaybackCoroutine()
         //---------------------------------------//
         {
-            if(_loadedRecording.Count == 0)
+            if(system != null && system.options != null)
             {
-                StopPlaybackInternal();
-                yield break;
-            }
-
-            _playbackIndex = Mathf.Clamp( _playbackIndex, 0, _loadedRecording.Count - 1 );
-
-            while(_playbackIndex < _loadedRecording.Count)
-            {
-                while(system.state == State.Paused)
+                if(system._loadedRecording.Count == 0)
                 {
-                    yield return null;
-                }
-
-                if(system.state != State.Playing)
-                {
+                    StopPlaybackInternal();
                     yield break;
                 }
 
-                var currentPoint = _loadedRecording[ _playbackIndex ];
-                SendUDPData( currentPoint.rewardState );
-                UpdatePlaybackProgress();
+                system._playbackIndex = Mathf.Clamp( system._playbackIndex, 0, system._loadedRecording.Count - 1 );
 
-                if(_playbackIndex < _loadedRecording.Count - 1)
+                while(system._playbackIndex < system._loadedRecording.Count)
                 {
-                    var nextPoint = _loadedRecording[ _playbackIndex + 1 ];
-                    long delayTicks = nextPoint.timestampTicks - currentPoint.timestampTicks;
-                    yield return new WaitForSecondsRealtime( (float)delayTicks / TimeSpan.TicksPerSecond );
+                    while(system.state == State.Paused)
+                    {
+                        yield return null;
+                    }
+
+                    if(system.state != State.Playing)
+                    {
+                        yield break;
+                    }
+
+                    var currentPoint = system._loadedRecording[ system._playbackIndex ];
+                    SendUDPData( currentPoint.rewardState );
+                    UpdatePlaybackProgress();
+
+                    if(system._playbackIndex < system._loadedRecording.Count - 1)
+                    {
+                        var nextPoint = system._loadedRecording[ system._playbackIndex + 1 ];
+                        long delayTicks = nextPoint.timestampTicks - currentPoint.timestampTicks;
+                        yield return new WaitForSecondsRealtime( (float)delayTicks / TimeSpan.TicksPerSecond );
+                    }
+
+                    system._playbackIndex++;
                 }
 
-                _playbackIndex++;
+                if(system.options.showDebugLogs)
+                    Debug.Log( "Playback finished." );
+                StopPlaybackInternal();
             }
 
-            if(system.options.showDebugLogs)
-                Debug.Log( "Playback finished." );
-            StopPlaybackInternal();
+            
         }
 
         #endregion
@@ -686,22 +703,22 @@ namespace gambit.neuroguide.recorder
         /// Callback handler for writing data to a file during recording.
         /// </summary>
         //---------------------------------------------------------//
-        private void OnDataReceivedForRecording( NeuroGuideData? data )
+        private static void OnDataReceivedForRecording( NeuroGuideData? data )
         //---------------------------------------------------------//
         {
-            if(_writer == null || !data.HasValue)
+            if(system._writer == null || !data.HasValue)
                 return;
 
             var point = new RecordedDataPoint
             {
-                id = _recordedDataCount++,
+                id = system._recordedDataCount++,
                 timestampTicks = data.Value.timestamp.Ticks,
                 rewardState = (byte)(data.Value.isRecievingReward ? 1 : 0)
             };
 
-            _writer.Write( point.id );
-            _writer.Write( point.timestampTicks );
-            _writer.Write( point.rewardState );
+            system._writer.Write( point.id );
+            system._writer.Write( point.timestampTicks );
+            system._writer.Write( point.rewardState );
         }
 
         #endregion
@@ -713,11 +730,11 @@ namespace gambit.neuroguide.recorder
         /// </summary>
         /// <returns>True if loading was successful, otherwise false.</returns>
         //---------------------------------------------------------//
-        private bool LoadRecordingFromFile( string path )
+        private static bool LoadRecordingFromFile( string path )
         //---------------------------------------------------------//
         {
-            _loadedRecording = new List<RecordedDataPoint>();
-            _activeRecordingPath = path;
+            system._loadedRecording = new List<RecordedDataPoint>();
+            system._activeRecordingPath = path;
 
             try
             {
@@ -732,14 +749,14 @@ namespace gambit.neuroguide.recorder
                             timestampTicks = reader.ReadInt64(),
                             rewardState = reader.ReadByte()
                         };
-                        _loadedRecording.Add( point );
+                        system._loadedRecording.Add( point );
                     }
                 }
 
-                if(_loadedRecording.Count > 0)
+                if(system._loadedRecording.Count > 0)
                 {
-                    long startTicks = _loadedRecording[ 0 ].timestampTicks;
-                    long endTicks = _loadedRecording[ _loadedRecording.Count - 1 ].timestampTicks;
+                    long startTicks = system._loadedRecording[ 0 ].timestampTicks;
+                    long endTicks = system._loadedRecording[ system._loadedRecording.Count - 1 ].timestampTicks;
                     system.TotalDuration = TimeSpan.FromTicks( endTicks - startTicks );
                 }
                 else
@@ -748,13 +765,13 @@ namespace gambit.neuroguide.recorder
                 }
 
                 if(system.options.showDebugLogs)
-                    Debug.Log( $"Loaded {_loadedRecording.Count} data points from {path}. Total duration: {system.TotalDuration}." );
+                    Debug.Log( $"Loaded {system._loadedRecording.Count} data points from {path}. Total duration: {system.TotalDuration}." );
                 return true;
             }
             catch(Exception e)
             {
                 Debug.LogError( $"Failed to load recording file: {e.Message}" );
-                _loadedRecording = null;
+                system._loadedRecording = null;
                 system.TotalDuration = TimeSpan.Zero;
                 return false;
             }
@@ -766,13 +783,13 @@ namespace gambit.neuroguide.recorder
 
         /// <summary>Updates the public progress properties based on the current playback index.</summary>
         //---------------------------------------------//
-        private void UpdatePlaybackProgress()
+        private static void UpdatePlaybackProgress()
         //---------------------------------------------//
         {
-            if(_loadedRecording == null || _loadedRecording.Count == 0)
+            if(system._loadedRecording == null || system._loadedRecording.Count == 0)
                 return;
-            long startTicks = _loadedRecording[ 0 ].timestampTicks;
-            long currentTicks = _loadedRecording[ _playbackIndex ].timestampTicks;
+            long startTicks = system._loadedRecording[ 0 ].timestampTicks;
+            long currentTicks = system._loadedRecording[ system._playbackIndex ].timestampTicks;
             system.PlaybackTime = TimeSpan.FromTicks( currentTicks - startTicks );
             system.PlaybackProgress = system.TotalDuration.Ticks > 0 ? (float)system.PlaybackTime.Ticks / system.TotalDuration.Ticks : 0;
         }
@@ -783,7 +800,7 @@ namespace gambit.neuroguide.recorder
 
         /// <summary>Stops an active recording and cleans up resources.</summary>
         //----------------------------------------------------//
-        private void StopRecordingInternal()
+        private static void StopRecordingInternal()
         //----------------------------------------------------//
         {
 #if GAMBIT_NEUROGUIDE
@@ -795,7 +812,7 @@ namespace gambit.neuroguide.recorder
             CleanupRecordingResources();
             UpdateState( State.Idle );
             if(system.options.showDebugLogs)
-                Debug.Log( $"Recording stopped. {_recordedDataCount} data points saved to {_activeRecordingPath}." );
+                Debug.Log( $"Recording stopped. {system._recordedDataCount} data points saved to {system._activeRecordingPath}." );
         }
 
         #endregion
@@ -804,18 +821,23 @@ namespace gambit.neuroguide.recorder
 
         /// <summary>Stops active playback and cleans up resources.</summary>
         //----------------------------------------------------//
-        private void StopPlaybackInternal()
+        private static void StopPlaybackInternal()
         //----------------------------------------------------//
         {
-            if(_playbackCoroutine != null)
+            if(system == null)
             {
-                StopCoroutine( _playbackCoroutine );
-                _playbackCoroutine = null;
+                return;
             }
 
-            _loadedRecording = null;
-            _activeRecordingPath = null;
-            _playbackIndex = 0;
+            if(system._playbackCoroutine != null)
+            {
+                StaticCoroutine.Stop( system._playbackCoroutine );
+                system._playbackCoroutine = null;
+            }
+
+            system._loadedRecording = null;
+            system._activeRecordingPath = null;
+            system._playbackIndex = 0;
             system.PlaybackProgress = 0f;
             system.PlaybackTime = TimeSpan.Zero;
             system.TotalDuration = TimeSpan.Zero;
@@ -829,13 +851,18 @@ namespace gambit.neuroguide.recorder
 
         /// <summary>Safely closes the file stream and writer for recordings.</summary>
         //----------------------------------------------------//
-        private void CleanupRecordingResources()
+        private static void CleanupRecordingResources()
         //----------------------------------------------------//
         {
-            _writer?.Close();
-            _fileStream?.Close();
-            _writer = null;
-            _fileStream = null;
+            if(system == null)
+            {
+                return;
+            }
+
+            system._writer?.Close();
+            system._fileStream?.Close();
+            system._writer = null;
+            system._fileStream = null;
         }
 
         #endregion
@@ -847,7 +874,7 @@ namespace gambit.neuroguide.recorder
         /// </summary>
         /// <param name="data"></param>
         //----------------------------------------------//
-        private void SendUDPData( byte data )
+        private static void SendUDPData( byte data )
         //----------------------------------------------//
         {
 #if GAMBIT_NEUROGUIDE
@@ -869,7 +896,7 @@ namespace gambit.neuroguide.recorder
 
         /// <summary>Updates the current state and invokes the OnStateUpdate action.</summary>
         //-----------------------------------------------//
-        private void UpdateState( State newState )
+        private static void UpdateState( State newState )
         //-----------------------------------------------//
         {
             if(system == null || system.state == newState)

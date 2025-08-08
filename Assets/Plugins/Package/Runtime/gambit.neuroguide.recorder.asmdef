@@ -6,7 +6,8 @@
         "gambit.singleton",
         "gambit.mathhelper",
         "gambit.neuroguide",
-        "Leguar.TotalJSON"
+        "Leguar.TotalJSON",
+        "gambit.staticcoroutine"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -40,6 +41,11 @@
             "name": "com.leguar.totaljson",
             "expression": "",
             "define": "EXT_TOTALJSON"
+        },
+        {
+            "name": "com.gambit.staticcoroutine",
+            "expression": "",
+            "define": "GAMBIT_STATIC_COROUTINE"
         }
     ],
     "noEngineReferences": false
